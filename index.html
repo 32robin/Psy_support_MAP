@@ -7,8 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<!-- 핵심 수정: autoload=false 추가 -->
-<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false"></script>
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false"></script>
 <script>
 tailwind.config = {
   theme: {
@@ -71,7 +70,6 @@ tailwind.config = {
 </head>
 <body class="bg-navy-50 text-navy-800">
 
-<!-- 로그인 화면 -->
 <div id="login-screen" class="login-bg fixed inset-0 z-50 flex items-center justify-center">
   <div class="login-card rounded-2xl p-10 w-full max-w-md mx-4 text-center">
     <div class="mb-8">
@@ -97,7 +95,6 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- 메인 콘텐츠 -->
 <div id="main-content" class="hidden h-screen flex">
   <aside class="w-[420px] h-full bg-white shadow-xl flex flex-col z-10 flex-shrink-0">
     <div class="px-6 py-5 border-b border-navy-100">
@@ -152,7 +149,6 @@ tailwind.config = {
   </main>
 </div>
 
-<!-- 상세 정보 팝업 -->
 <div id="detail-popup" class="popup-overlay fixed inset-0 z-40 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden fade-in">
     <div class="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4 flex items-center justify-between">
