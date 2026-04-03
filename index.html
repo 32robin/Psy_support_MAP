@@ -7,6 +7,20 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<!--
+  ====================================================================
+  카카오맵 SDK 로드
+  - https:// 명시 (file:// 환경 대응)
+  - autoload=false → kakao.maps.load() 콜백에서 수동 초기화
+  
+  [중요] 2025.12.3 카카오 개편 이후 도메인 등록 위치 변경됨!
+  기존: 앱 설정 → 플랫폼 → Web → 사이트 도메인
+  현재: 앱 → 플랫폼 키 → JavaScript 키 → JavaScript SDK 도메인
+  ====================================================================
+-->
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false"></script>
+
 <script>
 tailwind.config = {
   theme: {
@@ -176,7 +190,6 @@ let overlays = [];
 let clientMarker = null;
 let clientOverlay = null;
 let kakaoReady = false;
-let kakaoSDKLoaded = false; // SDK 스크립트 로드 여부
 
 // ========== 로그인 ==========
 function attemptLogin() {
@@ -215,86 +228,99 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================================
-//  카카오맵 SDK를 동적으로 로드 (head에서 제거하고 여기서 관리)
-//  이렇게 하면 onload/onerror를 정확히 잡을 수 있음
+//  카카오맵 초기화
+//  head의 <script>가 정상 로드되었으면 kakao 객체가 존재함
+//  실패 시 동적으로 재시도
 // ==========================================================
-function loadKakaoSDK() {
-  return new Promise((resolve, reject) => {
-    // 이미 로드된 경우
+function initMap() {
+  // head에서 이미 로드된 경우
+  if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
+    console.log('[KakaoMap] head에서 SDK 로드 확인됨');
+    doKakaoInit();
+    return;
+  }
+
+  // head에서 로드 실패 → 동적으로 재시도
+  console.warn('[KakaoMap] head에서 SDK 로드 실패, 동적 로드 시도...');
+  const script = document.createElement('script');
+  script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false';
+
+  script.onload = function() {
     if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
-      console.log('[SDK] 이미 로드됨');
-      resolve();
-      return;
+      console.log('[KakaoMap] 동적 로드 성공');
+      doKakaoInit();
+    } else {
+      handleSDKFailure('SDK 스크립트는 로드되었으나 kakao 객체가 생성되지 않았습니다.');
     }
+  };
 
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false';
+  script.onerror = function() {
+    handleSDKFailure('SDK 스크립트를 다운로드할 수 없습니다.');
+  };
 
-    script.onload = function() {
-      console.log('[SDK] ✅ 스크립트 다운로드 성공');
-      if (typeof kakao !== 'undefined' && kakao.maps) {
-        resolve();
-      } else {
-        reject(new Error('스크립트는 로드되었으나 kakao 객체가 생성되지 않음 — API 키가 잘못되었거나 도메인이 미등록'));
-      }
-    };
+  document.head.appendChild(script);
+}
 
-    script.onerror = function(e) {
-      console.error('[SDK] ❌ 스크립트 다운로드 실패:', e);
-      reject(new Error('카카오맵 SDK 스크립트를 다운로드할 수 없습니다. 네트워크를 확인하세요.'));
-    };
-
-    document.head.appendChild(script);
+function doKakaoInit() {
+  kakao.maps.load(function() {
+    try {
+      const container = document.getElementById('kakao-map');
+      map = new kakao.maps.Map(container, {
+        center: new kakao.maps.LatLng(36.5, 127.5),
+        level: 12
+      });
+      map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+      kakaoReady = true;
+      console.log('[KakaoMap] ✅ 지도 초기화 성공!');
+    } catch (e) {
+      console.error('[KakaoMap] 지도 생성 실패:', e);
+      showToast('카카오맵 초기화 중 오류 발생', 'error');
+    }
   });
 }
 
-// ==========================================================
-//  카카오맵 초기화
-// ==========================================================
-async function initMap() {
-  try {
-    // 1단계: SDK 로드
-    await loadKakaoSDK();
-    console.log('[KakaoMap] SDK 로드 완료, kakao.maps.load() 호출...');
+function handleSDKFailure(reason) {
+  console.error('============================================');
+  console.error('[KakaoMap] SDK 로드 실패: ' + reason);
+  console.error('');
+  console.error('2025.12.3 카카오 개편 이후 도메인 등록 위치가 변경되었습니다!');
+  console.error('');
+  console.error('올바른 경로:');
+  console.error('  developers.kakao.com → 내 앱 선택');
+  console.error('  → 좌측 메뉴 [앱] → [플랫폼 키]');
+  console.error('  → [JavaScript 키] 클릭');
+  console.error('  → [JavaScript SDK 도메인]에 https://32robin.github.io 등록');
+  console.error('');
+  console.error('※ 기존의 [플랫폼] → [Web] → [사이트 도메인]은 더 이상 작동하지 않습니다!');
+  console.error('============================================');
 
-    // 2단계: maps API 초기화 (autoload=false이므로 수동 호출)
-    await new Promise((resolve, reject) => {
-      kakao.maps.load(function() {
-        try {
-          const container = document.getElementById('kakao-map');
-          if (!container) {
-            reject(new Error('#kakao-map 컨테이너를 찾을 수 없음'));
-            return;
-          }
+  showToast('카카오맵 SDK 로드 실패 — F12 콘솔에서 해결 방법을 확인하세요.', 'error');
 
-          // 컨테이너가 화면에 보이는지 확인 (display:none이면 지도 생성 실패)
-          const rect = container.getBoundingClientRect();
-          console.log('[KakaoMap] 컨테이너 크기:', rect.width, 'x', rect.height);
-
-          map = new kakao.maps.Map(container, {
-            center: new kakao.maps.LatLng(36.5, 127.5),
-            level: 12
-          });
-          map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
-          kakaoReady = true;
-          console.log('[KakaoMap] ✅ 지도 초기화 성공!');
-          resolve();
-        } catch (e) {
-          reject(e);
-        }
-      });
-    });
-
-  } catch (e) {
-    console.error('[KakaoMap] 초기화 실패:', e.message);
-    console.error('');
-    console.error('=== 문제 해결 체크리스트 ===');
-    console.error('1. https://developers.kakao.com → 내 앱 → 앱 키 → "JavaScript 키" 확인');
-    console.error('2. 내 앱 → 플랫폼 → Web → 사이트 도메인에 "https://32robin.github.io" 등록 확인');
-    console.error('3. 브라우저 F12 → Network 탭에서 sdk.js 요청의 응답 코드 확인');
-    console.error('============================');
-    showToast('카카오맵 로드 실패: ' + e.message, 'error');
+  // 지도 영역에 안내 메시지 표시
+  const mapEl = document.getElementById('kakao-map');
+  if (mapEl) {
+    mapEl.style.display = 'flex';
+    mapEl.style.alignItems = 'center';
+    mapEl.style.justifyContent = 'center';
+    mapEl.style.backgroundColor = '#f0f3f8';
+    mapEl.innerHTML = `
+      <div style="text-align:center; padding:40px; max-width:500px;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:48px; color:#e74c3c; margin-bottom:16px;"></i>
+        <h3 style="font-size:18px; font-weight:700; color:#0e2035; margin-bottom:12px;">카카오맵을 불러올 수 없습니다</h3>
+        <p style="font-size:13px; color:#6783b7; line-height:1.6; margin-bottom:16px;">
+          2025.12 카카오 개편 이후 도메인 등록 위치가 변경되었습니다.
+        </p>
+        <div style="background:#fff; border:1px solid #d9e0ed; border-radius:12px; padding:16px; text-align:left; font-size:12px; color:#142d48; line-height:1.8;">
+          <strong>해결 방법:</strong><br>
+          1. <a href="https://developers.kakao.com" target="_blank" style="color:#0ea5e9; text-decoration:underline;">developers.kakao.com</a> 접속<br>
+          2. 내 앱 선택 → 좌측 <strong>[앱]</strong> → <strong>[플랫폼 키]</strong><br>
+          3. <strong>[JavaScript 키]</strong> 클릭<br>
+          4. <strong>[JavaScript SDK 도메인]</strong>에<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<code style="background:#f0f3f8; padding:2px 6px; border-radius:4px;">https://32robin.github.io</code> 등록<br>
+          5. 저장 후 이 페이지 새로고침 (Ctrl+Shift+R)
+        </div>
+      </div>
+    `;
   }
 }
 
@@ -349,7 +375,7 @@ async function handleExcelUpload(event) {
     }
 
     const colMap = detectColumns(json[0]);
-    console.log('[Excel] 감지된 컬럼 매핑:', colMap);
+    console.log('[Excel] 컬럼 매핑:', colMap);
 
     const volunteers = json.map((row, i) => ({
       id: i,
@@ -387,10 +413,10 @@ async function handleExcelUpload(event) {
     volunteersDB = volunteers.filter(v => v.lat !== null);
     saveToStorage();
     updateDataCount();
-    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>완료: ${okCount}명 변환 성공` + (failCount > 0 ? `, ${failCount}명 실패` : '');
+    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>완료: ${okCount}명 성공` + (failCount > 0 ? `, ${failCount}명 실패` : '');
     showToast(`${okCount}명의 활동가 데이터가 등록되었습니다.`, 'success');
   } catch (e) {
-    console.error('[Excel] 처리 오류:', e);
+    console.error('[Excel]', e);
     showToast('엑셀 파일 처리 중 오류가 발생했습니다.', 'error');
     statusEl.classList.add('hidden');
   }
@@ -401,25 +427,19 @@ function detectColumns(firstRow) {
   const keys = Object.keys(firstRow);
   const find = (keywords) => keys.find(k => keywords.some(kw => k.includes(kw))) || keywords[0];
   return {
-    직역: find(['직역','직종','분류']),
-    이름: find(['이름','성명','name']),
-    이메일: find(['이메일','메일','email']),
-    전화번호: find(['전화','연락처','phone','핸드폰']),
-    소속기관: find(['소속','기관','직장']),
-    주소: find(['주소','address','거주지']),
-    자격증: find(['자격증','자격','면허']),
-    경력내용: find(['경력','이력','career']),
-    활동분야: find(['활동분야','활동','분야','전문']),
-    대면비대면: find(['대면','비대면','방식','mode'])
+    직역: find(['직역','직종','분류']), 이름: find(['이름','성명','name']),
+    이메일: find(['이메일','메일','email']), 전화번호: find(['전화','연락처','phone','핸드폰']),
+    소속기관: find(['소속','기관','직장']), 주소: find(['주소','address','거주지']),
+    자격증: find(['자격증','자격','면허']), 경력내용: find(['경력','이력','career']),
+    활동분야: find(['활동분야','활동','분야','전문']), 대면비대면: find(['대면','비대면','방식','mode'])
   };
 }
 
 // ========== LocalStorage ==========
 function saveToStorage() {
   try { localStorage.setItem('kpa_volunteers', JSON.stringify(volunteersDB)); }
-  catch (e) { console.warn('[Storage] 저장 실패:', e); showToast('데이터 저장 실패', 'warning'); }
+  catch (e) { console.warn('[Storage] 저장 실패:', e); }
 }
-
 function loadFromStorage() {
   try {
     const stored = localStorage.getItem('kpa_volunteers');
@@ -435,31 +455,22 @@ function loadFromStorage() {
     }
   } catch (e) { console.warn('[Storage] 로드 실패:', e); }
 }
-
 function clearData() {
   if (!confirm('모든 활동가 데이터를 삭제하시겠습니까?')) return;
-  volunteersDB = [];
-  localStorage.removeItem('kpa_volunteers');
-  updateDataCount();
-  clearMapMarkers();
+  volunteersDB = []; localStorage.removeItem('kpa_volunteers'); updateDataCount(); clearMapMarkers();
   document.getElementById('result-list').classList.add('hidden');
   document.getElementById('result-placeholder').classList.remove('hidden');
   document.getElementById('upload-status').classList.add('hidden');
   showToast('데이터가 초기화되었습니다.', 'warning');
 }
+function updateDataCount() { document.getElementById('data-count').textContent = `${volunteersDB.length}명`; }
 
-function updateDataCount() {
-  document.getElementById('data-count').textContent = `${volunteersDB.length}명`;
-}
-
-// ========== 하버사인 공식 ==========
+// ========== 하버사인 ==========
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -470,8 +481,7 @@ async function searchMatch() {
   if (volunteersDB.length === 0) { showToast('먼저 활동가 데이터를 업로드해주세요.', 'warning'); return; }
 
   const btn = document.getElementById('search-btn');
-  btn.innerHTML = '<span class="spinner"></span>';
-  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
 
   try {
     const clientCoord = await geocodeAddress(address);
@@ -485,15 +495,9 @@ async function searchMatch() {
       return true;
     });
 
-    if (filtered.length === 0) {
-      showToast('필터 조건에 맞는 활동가가 없습니다.', 'warning');
-      return;
-    }
+    if (filtered.length === 0) { showToast('필터 조건에 맞는 활동가가 없습니다.', 'warning'); return; }
 
-    const withDist = filtered.map(v => ({
-      ...v,
-      distance: haversineDistance(clientCoord.lat, clientCoord.lng, v.lat, v.lng)
-    }));
+    const withDist = filtered.map(v => ({ ...v, distance: haversineDistance(clientCoord.lat, clientCoord.lng, v.lat, v.lng) }));
     withDist.sort((a, b) => a.distance - b.distance);
     const top5 = withDist.slice(0, 5);
 
@@ -504,16 +508,17 @@ async function searchMatch() {
     console.error('[Search]', e);
     showToast('주소를 찾을 수 없습니다. 정확한 주소를 입력해주세요.', 'error');
   } finally {
-    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>';
-    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>'; btn.disabled = false;
   }
 }
 
 // ========== 결과 렌더링 ==========
+function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function truncate(str, len) { return str.length > len ? str.slice(0, len) + '…' : str; }
+
 function renderResults(top5) {
   const listEl = document.getElementById('result-list');
-  const placeholder = document.getElementById('result-placeholder');
-  placeholder.classList.add('hidden');
+  document.getElementById('result-placeholder').classList.add('hidden');
   listEl.classList.remove('hidden');
   listEl.innerHTML = '';
 
@@ -543,9 +548,6 @@ function renderResults(top5) {
   });
 }
 
-function truncate(str, len) { return str.length > len ? str.slice(0, len) + '…' : str; }
-function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-
 // ========== 상세 팝업 ==========
 function showDetail(v, rank) {
   document.getElementById('detail-popup').classList.remove('hidden');
@@ -567,46 +569,36 @@ function showDetail(v, rank) {
       <div class="min-w-0"><p class="text-[11px] text-navy-400 font-medium">${f.label}</p><p class="text-sm text-navy-800 break-words">${escapeHtml(f.value)}</p></div>
     </div>`).join('');
 }
-
 function closePopup() { document.getElementById('detail-popup').classList.add('hidden'); }
-
-document.addEventListener('click', function(e) {
-  const popup = document.getElementById('detail-popup');
-  if (!popup.classList.contains('hidden') && e.target === popup) closePopup();
-});
+document.addEventListener('click', e => { const p = document.getElementById('detail-popup'); if (!p.classList.contains('hidden') && e.target === p) closePopup(); });
 
 // ========== 지도 마커 ==========
 function clearMapMarkers() {
-  markers.forEach(m => m.setMap(null));
-  overlays.forEach(o => o.setMap(null));
-  markers = []; overlays = [];
+  markers.forEach(m => m.setMap(null)); overlays.forEach(o => o.setMap(null)); markers = []; overlays = [];
   if (clientMarker) { clientMarker.setMap(null); clientMarker = null; }
   if (clientOverlay) { clientOverlay.setMap(null); clientOverlay = null; }
 }
 
 function renderMap(clientCoord, top5) {
-  if (!map) { console.warn('[Map] map 객체 없음'); return; }
+  if (!map) return;
   clearMapMarkers();
-
-  const clientPos = new kakao.maps.LatLng(clientCoord.lat, clientCoord.lng);
-  const clientImg = new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', new kakao.maps.Size(24, 35));
-  clientMarker = new kakao.maps.Marker({ position: clientPos, map: map, image: clientImg, zIndex: 10 });
-  clientOverlay = new kakao.maps.CustomOverlay({ position: clientPos, content: '<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>', yAnchor: 2.2, map: map });
+  const cp = new kakao.maps.LatLng(clientCoord.lat, clientCoord.lng);
+  clientMarker = new kakao.maps.Marker({ position: cp, map: map, image: new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', new kakao.maps.Size(24, 35)), zIndex: 10 });
+  clientOverlay = new kakao.maps.CustomOverlay({ position: cp, content: '<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>', yAnchor: 2.2, map: map });
 
   const bounds = new kakao.maps.LatLngBounds();
-  bounds.extend(clientPos);
+  bounds.extend(cp);
 
   top5.forEach((v, i) => {
     const pos = new kakao.maps.LatLng(v.lat, v.lng);
     bounds.extend(pos);
-    const marker = new kakao.maps.Marker({ position: pos, map: map, zIndex: 5 });
-    markers.push(marker);
-    const distLabel = v.distance < 1 ? (v.distance * 1000).toFixed(0) + 'm' : v.distance.toFixed(1) + 'km';
-    const overlay = new kakao.maps.CustomOverlay({ position: pos, content: `<div class="marker-label">${i + 1}위 ${escapeHtml(v.이름)} (${distLabel})</div>`, yAnchor: 2.2, map: map });
-    overlays.push(overlay);
-    kakao.maps.event.addListener(marker, 'click', () => showDetail(v, i + 1));
+    const m = new kakao.maps.Marker({ position: pos, map: map, zIndex: 5 });
+    markers.push(m);
+    const dl = v.distance < 1 ? (v.distance * 1000).toFixed(0) + 'm' : v.distance.toFixed(1) + 'km';
+    const o = new kakao.maps.CustomOverlay({ position: pos, content: `<div class="marker-label">${i + 1}위 ${escapeHtml(v.이름)} (${dl})</div>`, yAnchor: 2.2, map: map });
+    overlays.push(o);
+    kakao.maps.event.addListener(m, 'click', () => showDetail(v, i + 1));
   });
-
   map.setBounds(bounds, 80);
 }
 
