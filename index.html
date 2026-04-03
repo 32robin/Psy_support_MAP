@@ -7,7 +7,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false"></script>
 <script>
 tailwind.config = {
   theme: {
@@ -59,7 +58,7 @@ tailwind.config = {
   @keyframes slideInRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   .fade-in { animation: fadeIn 0.5s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  .spinner { border:3px solid #d9e0ed; border-top-color:#0ea5e9; border-radius:50%; width:20px; height:20px; animation:spin 0.8s linear infinite; display:inline-block; }
+  .spinner { border:3px solid #d9e0ed; border-top-color:#0ea5e9; border-radius:50%; width:20px; height:20px; animation:spin 0.8s linear infinite; display:inline-block; vertical-align:middle; }
   @keyframes spin { to{transform:rotate(360deg)} }
   .input-glow:focus { box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
   .marker-label { background:#1b3a5c; color:#fff; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.2); white-space:nowrap; position:relative; }
@@ -70,6 +69,7 @@ tailwind.config = {
 </head>
 <body class="bg-navy-50 text-navy-800">
 
+<!-- ==================== 로그인 화면 ==================== -->
 <div id="login-screen" class="login-bg fixed inset-0 z-50 flex items-center justify-center">
   <div class="login-card rounded-2xl p-10 w-full max-w-md mx-4 text-center">
     <div class="mb-8">
@@ -95,6 +95,7 @@ tailwind.config = {
   </div>
 </div>
 
+<!-- ==================== 메인 콘텐츠 ==================== -->
 <div id="main-content" class="hidden h-screen flex">
   <aside class="w-[420px] h-full bg-white shadow-xl flex flex-col z-10 flex-shrink-0">
     <div class="px-6 py-5 border-b border-navy-100">
@@ -149,6 +150,7 @@ tailwind.config = {
   </main>
 </div>
 
+<!-- 상세 정보 팝업 -->
 <div id="detail-popup" class="popup-overlay fixed inset-0 z-40 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden fade-in">
     <div class="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4 flex items-center justify-between">
@@ -164,6 +166,7 @@ tailwind.config = {
 
 <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+<!-- ==================== 스크립트 ==================== -->
 <script>
 // ========== 상태 관리 ==========
 let volunteersDB = [];
@@ -173,6 +176,7 @@ let overlays = [];
 let clientMarker = null;
 let clientOverlay = null;
 let kakaoReady = false;
+let kakaoSDKLoaded = false; // SDK 스크립트 로드 여부
 
 // ========== 로그인 ==========
 function attemptLogin() {
@@ -189,6 +193,7 @@ function attemptLogin() {
     document.getElementById('login-pw').value = '';
   }
 }
+
 function logout() {
   document.getElementById('main-content').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
@@ -209,39 +214,101 @@ function showToast(message, type = 'info') {
   setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
 }
 
-// ========== 카카오맵 초기화 (핵심 수정) ==========
-function initMap() {
-  if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
-    showToast('카카오맵 SDK를 불러올 수 없습니다. API 키와 도메인 설정을 확인해주세요.', 'error');
-    console.error('[KakaoMap] kakao 객체 없음 — API 키 또는 허용 도메인 확인 필요');
-    return;
-  }
-  // autoload=false 이므로 반드시 kakao.maps.load() 콜백 안에서 생성
-  kakao.maps.load(function() {
-    try {
-      const container = document.getElementById('kakao-map');
-      map = new kakao.maps.Map(container, {
-        center: new kakao.maps.LatLng(36.5, 127.5),
-        level: 12
-      });
-      map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
-      kakaoReady = true;
-      console.log('[KakaoMap] 초기화 성공');
-    } catch (e) {
-      console.error('[KakaoMap] 초기화 실패:', e);
-      showToast('카카오맵 초기화에 실패했습니다.', 'error');
+// ==========================================================
+//  카카오맵 SDK를 동적으로 로드 (head에서 제거하고 여기서 관리)
+//  이렇게 하면 onload/onerror를 정확히 잡을 수 있음
+// ==========================================================
+function loadKakaoSDK() {
+  return new Promise((resolve, reject) => {
+    // 이미 로드된 경우
+    if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
+      console.log('[SDK] 이미 로드됨');
+      resolve();
+      return;
     }
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false';
+
+    script.onload = function() {
+      console.log('[SDK] ✅ 스크립트 다운로드 성공');
+      if (typeof kakao !== 'undefined' && kakao.maps) {
+        resolve();
+      } else {
+        reject(new Error('스크립트는 로드되었으나 kakao 객체가 생성되지 않음 — API 키가 잘못되었거나 도메인이 미등록'));
+      }
+    };
+
+    script.onerror = function(e) {
+      console.error('[SDK] ❌ 스크립트 다운로드 실패:', e);
+      reject(new Error('카카오맵 SDK 스크립트를 다운로드할 수 없습니다. 네트워크를 확인하세요.'));
+    };
+
+    document.head.appendChild(script);
   });
 }
 
-// ========== 지오코딩 (API 준비 대기) ==========
+// ==========================================================
+//  카카오맵 초기화
+// ==========================================================
+async function initMap() {
+  try {
+    // 1단계: SDK 로드
+    await loadKakaoSDK();
+    console.log('[KakaoMap] SDK 로드 완료, kakao.maps.load() 호출...');
+
+    // 2단계: maps API 초기화 (autoload=false이므로 수동 호출)
+    await new Promise((resolve, reject) => {
+      kakao.maps.load(function() {
+        try {
+          const container = document.getElementById('kakao-map');
+          if (!container) {
+            reject(new Error('#kakao-map 컨테이너를 찾을 수 없음'));
+            return;
+          }
+
+          // 컨테이너가 화면에 보이는지 확인 (display:none이면 지도 생성 실패)
+          const rect = container.getBoundingClientRect();
+          console.log('[KakaoMap] 컨테이너 크기:', rect.width, 'x', rect.height);
+
+          map = new kakao.maps.Map(container, {
+            center: new kakao.maps.LatLng(36.5, 127.5),
+            level: 12
+          });
+          map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+          kakaoReady = true;
+          console.log('[KakaoMap] ✅ 지도 초기화 성공!');
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+  } catch (e) {
+    console.error('[KakaoMap] 초기화 실패:', e.message);
+    console.error('');
+    console.error('=== 문제 해결 체크리스트 ===');
+    console.error('1. https://developers.kakao.com → 내 앱 → 앱 키 → "JavaScript 키" 확인');
+    console.error('2. 내 앱 → 플랫폼 → Web → 사이트 도메인에 "https://32robin.github.io" 등록 확인');
+    console.error('3. 브라우저 F12 → Network 탭에서 sdk.js 요청의 응답 코드 확인');
+    console.error('============================');
+    showToast('카카오맵 로드 실패: ' + e.message, 'error');
+  }
+}
+
+// ========== 지오코딩 ==========
 function waitForKakao() {
   return new Promise((resolve, reject) => {
     if (kakaoReady) { resolve(); return; }
     let attempts = 0;
     const timer = setInterval(() => {
       if (kakaoReady) { clearInterval(timer); resolve(); }
-      else if (++attempts > 50) { clearInterval(timer); reject(new Error('카카오맵 API 로딩 타임아웃(10초)')); }
+      else if (++attempts > 50) {
+        clearInterval(timer);
+        reject(new Error('카카오맵 API 로딩 타임아웃 (10초)'));
+      }
     }, 200);
   });
 }
@@ -251,10 +318,10 @@ async function geocodeAddress(address) {
   return new Promise((resolve, reject) => {
     const geocoder = new kakao.maps.services.Geocoder();
     geocoder.addressSearch(address, (result, status) => {
-      if (status === kakao.maps.services.Status.OK) {
+      if (status === kakao.maps.services.Status.OK && result.length > 0) {
         resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
       } else {
-        reject(new Error(`주소 변환 실패: ${address}`));
+        reject(new Error(`주소 변환 실패: ${address} (status: ${status})`));
       }
     });
   });
@@ -264,81 +331,136 @@ async function geocodeAddress(address) {
 async function handleExcelUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
+
   const statusEl = document.getElementById('upload-status');
   statusEl.classList.remove('hidden');
   statusEl.innerHTML = '<span class="spinner mr-2"></span>엑셀 파일을 읽는 중...';
+
   try {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    if (json.length === 0) { showToast('엑셀 파일에 데이터가 없습니다.', 'error'); statusEl.classList.add('hidden'); return; }
+
+    if (json.length === 0) {
+      showToast('엑셀 파일에 데이터가 없습니다.', 'error');
+      statusEl.classList.add('hidden');
+      return;
+    }
 
     const colMap = detectColumns(json[0]);
+    console.log('[Excel] 감지된 컬럼 매핑:', colMap);
+
     const volunteers = json.map((row, i) => ({
       id: i,
-      직역: row[colMap.직역] || '', 이름: row[colMap.이름] || '', 이메일: row[colMap.이메일] || '',
-      전화번호: String(row[colMap.전화번호] || ''), 소속기관: row[colMap.소속기관] || '',
-      주소: row[colMap.주소] || '', 자격증: row[colMap.자격증] || '', 경력내용: row[colMap.경력내용] || '',
-      활동분야: row[colMap.활동분야] || '', 대면비대면: row[colMap.대면비대면] || '',
+      직역: String(row[colMap.직역] || ''),
+      이름: String(row[colMap.이름] || ''),
+      이메일: String(row[colMap.이메일] || ''),
+      전화번호: String(row[colMap.전화번호] || ''),
+      소속기관: String(row[colMap.소속기관] || ''),
+      주소: String(row[colMap.주소] || '').trim(),
+      자격증: String(row[colMap.자격증] || ''),
+      경력내용: String(row[colMap.경력내용] || ''),
+      활동분야: String(row[colMap.활동분야] || ''),
+      대면비대면: String(row[colMap.대면비대면] || ''),
       lat: null, lng: null
     }));
 
     statusEl.innerHTML = `<span class="spinner mr-2"></span>주소를 좌표로 변환 중... (0/${volunteers.length})`;
-    let ok = 0, fail = 0;
+    let okCount = 0, failCount = 0;
+
     for (let i = 0; i < volunteers.length; i++) {
       const v = volunteers[i];
-      if (!v.주소) { fail++; continue; }
-      try { const c = await geocodeAddress(v.주소); v.lat = c.lat; v.lng = c.lng; ok++; }
-      catch { console.warn(`Geocode 실패 [${v.이름}]:`, v.주소); fail++; }
-      statusEl.innerHTML = `<span class="spinner mr-2"></span>주소를 좌표로 변환 중... (${i+1}/${volunteers.length})`;
+      if (!v.주소) { failCount++; continue; }
+      try {
+        const coord = await geocodeAddress(v.주소);
+        v.lat = coord.lat;
+        v.lng = coord.lng;
+        okCount++;
+      } catch (e) {
+        console.warn(`[Geocode] 실패 #${i} "${v.이름}": ${v.주소}`, e.message);
+        failCount++;
+      }
+      statusEl.innerHTML = `<span class="spinner mr-2"></span>주소를 좌표로 변환 중... (${i + 1}/${volunteers.length})`;
     }
+
     volunteersDB = volunteers.filter(v => v.lat !== null);
-    saveToStorage(); updateDataCount();
-    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>완료: ${ok}명 변환 성공` + (fail > 0 ? `, ${fail}명 실패` : '');
-    showToast(`${ok}명의 활동가 데이터가 등록되었습니다.`, 'success');
-  } catch (e) { console.error(e); showToast('엑셀 파일 처리 중 오류가 발생했습니다.', 'error'); statusEl.classList.add('hidden'); }
+    saveToStorage();
+    updateDataCount();
+    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>완료: ${okCount}명 변환 성공` + (failCount > 0 ? `, ${failCount}명 실패` : '');
+    showToast(`${okCount}명의 활동가 데이터가 등록되었습니다.`, 'success');
+  } catch (e) {
+    console.error('[Excel] 처리 오류:', e);
+    showToast('엑셀 파일 처리 중 오류가 발생했습니다.', 'error');
+    statusEl.classList.add('hidden');
+  }
   event.target.value = '';
 }
 
 function detectColumns(firstRow) {
   const keys = Object.keys(firstRow);
-  const find = (kws) => keys.find(k => kws.some(kw => k.includes(kw))) || kws[0];
+  const find = (keywords) => keys.find(k => keywords.some(kw => k.includes(kw))) || keywords[0];
   return {
-    직역: find(['직역','직종','분류']), 이름: find(['이름','성명','name']),
-    이메일: find(['이메일','메일','email']), 전화번호: find(['전화','연락처','phone','핸드폰']),
-    소속기관: find(['소속','기관','직장']), 주소: find(['주소','address','거주지']),
-    자격증: find(['자격증','자격','면허']), 경력내용: find(['경력','이력','career']),
-    활동분야: find(['활동분야','활동','분야','전문']), 대면비대면: find(['대면','비대면','방식','mode'])
+    직역: find(['직역','직종','분류']),
+    이름: find(['이름','성명','name']),
+    이메일: find(['이메일','메일','email']),
+    전화번호: find(['전화','연락처','phone','핸드폰']),
+    소속기관: find(['소속','기관','직장']),
+    주소: find(['주소','address','거주지']),
+    자격증: find(['자격증','자격','면허']),
+    경력내용: find(['경력','이력','career']),
+    활동분야: find(['활동분야','활동','분야','전문']),
+    대면비대면: find(['대면','비대면','방식','mode'])
   };
 }
 
 // ========== LocalStorage ==========
-function saveToStorage() { localStorage.setItem('kpa_volunteers', JSON.stringify(volunteersDB)); }
+function saveToStorage() {
+  try { localStorage.setItem('kpa_volunteers', JSON.stringify(volunteersDB)); }
+  catch (e) { console.warn('[Storage] 저장 실패:', e); showToast('데이터 저장 실패', 'warning'); }
+}
+
 function loadFromStorage() {
   try {
-    const s = localStorage.getItem('kpa_volunteers');
-    if (s) { volunteersDB = JSON.parse(s); updateDataCount();
-      if (volunteersDB.length > 0) { const el = document.getElementById('upload-status'); el.classList.remove('hidden');
+    const stored = localStorage.getItem('kpa_volunteers');
+    if (stored) {
+      volunteersDB = JSON.parse(stored);
+      updateDataCount();
+      if (volunteersDB.length > 0) {
+        const el = document.getElementById('upload-status');
+        el.classList.remove('hidden');
         el.innerHTML = `<i class="fa-solid fa-database text-accent-500 mr-1"></i>저장된 데이터 ${volunteersDB.length}명 로드 완료`;
-        showToast(`저장된 ${volunteersDB.length}명의 데이터를 불러왔습니다.`, 'info'); } }
-  } catch(e) { console.warn('LocalStorage 로드 실패', e); }
+        showToast(`저장된 ${volunteersDB.length}명의 데이터를 불러왔습니다.`, 'info');
+      }
+    }
+  } catch (e) { console.warn('[Storage] 로드 실패:', e); }
 }
+
 function clearData() {
   if (!confirm('모든 활동가 데이터를 삭제하시겠습니까?')) return;
-  volunteersDB = []; localStorage.removeItem('kpa_volunteers'); updateDataCount(); clearMapMarkers();
+  volunteersDB = [];
+  localStorage.removeItem('kpa_volunteers');
+  updateDataCount();
+  clearMapMarkers();
   document.getElementById('result-list').classList.add('hidden');
   document.getElementById('result-placeholder').classList.remove('hidden');
   document.getElementById('upload-status').classList.add('hidden');
   showToast('데이터가 초기화되었습니다.', 'warning');
 }
-function updateDataCount() { document.getElementById('data-count').textContent = `${volunteersDB.length}명`; }
 
-// ========== 하버사인 ==========
+function updateDataCount() {
+  document.getElementById('data-count').textContent = `${volunteersDB.length}명`;
+}
+
+// ========== 하버사인 공식 ==========
 function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // ========== TOP 5 매칭 ==========
@@ -346,88 +468,149 @@ async function searchMatch() {
   const address = document.getElementById('client-address').value.trim();
   if (!address) { showToast('내담자 주소를 입력해주세요.', 'warning'); return; }
   if (volunteersDB.length === 0) { showToast('먼저 활동가 데이터를 업로드해주세요.', 'warning'); return; }
+
   const btn = document.getElementById('search-btn');
-  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
   try {
-    const cc = await geocodeAddress(address);
-    const fFace = document.getElementById('filter-face').checked, fRemote = document.getElementById('filter-remote').checked;
+    const clientCoord = await geocodeAddress(address);
+    const fFace = document.getElementById('filter-face').checked;
+    const fRemote = document.getElementById('filter-remote').checked;
+
     let filtered = volunteersDB.filter(v => {
       if (fFace && fRemote) return true;
       if (fFace && !fRemote) return !v.대면비대면.includes('비대면');
       if (!fFace && fRemote) return v.대면비대면.includes('비대면');
       return true;
     });
-    const wd = filtered.map(v => ({ ...v, distance: haversineDistance(cc.lat, cc.lng, v.lat, v.lng) }));
-    wd.sort((a,b) => a.distance - b.distance);
-    const top5 = wd.slice(0, 5);
-    renderResults(top5); renderMap(cc, top5);
+
+    if (filtered.length === 0) {
+      showToast('필터 조건에 맞는 활동가가 없습니다.', 'warning');
+      return;
+    }
+
+    const withDist = filtered.map(v => ({
+      ...v,
+      distance: haversineDistance(clientCoord.lat, clientCoord.lng, v.lat, v.lng)
+    }));
+    withDist.sort((a, b) => a.distance - b.distance);
+    const top5 = withDist.slice(0, 5);
+
+    renderResults(top5);
+    renderMap(clientCoord, top5);
     document.getElementById('map-badge').classList.add('hidden');
-  } catch(e) { console.error(e); showToast('주소를 찾을 수 없습니다. 정확한 주소를 입력해주세요.', 'error'); }
-  finally { btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>'; btn.disabled = false; }
+  } catch (e) {
+    console.error('[Search]', e);
+    showToast('주소를 찾을 수 없습니다. 정확한 주소를 입력해주세요.', 'error');
+  } finally {
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>';
+    btn.disabled = false;
+  }
 }
 
 // ========== 결과 렌더링 ==========
 function renderResults(top5) {
-  const listEl = document.getElementById('result-list'), ph = document.getElementById('result-placeholder');
-  ph.classList.add('hidden'); listEl.classList.remove('hidden'); listEl.innerHTML = '';
+  const listEl = document.getElementById('result-list');
+  const placeholder = document.getElementById('result-placeholder');
+  placeholder.classList.add('hidden');
+  listEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+
   top5.forEach((v, i) => {
-    const ds = v.distance < 1 ? `${(v.distance*1000).toFixed(0)}m` : `${v.distance.toFixed(1)}km`;
+    const distStr = v.distance < 1 ? `${(v.distance * 1000).toFixed(0)}m` : `${v.distance.toFixed(1)}km`;
     const card = document.createElement('div');
     card.className = 'volunteer-card bg-white rounded-xl p-3.5 cursor-pointer border border-navy-100 fade-in';
-    card.style.animationDelay = `${i*0.08}s`;
-    card.onclick = () => showDetail(v, i+1);
-    card.innerHTML = `<div class="flex items-start gap-3"><div class="rank-badge rank-${i+1}">${i+1}</div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-navy-800">${v.이름}</span><span class="text-xs font-medium text-accent-600 bg-accent-500/10 px-2 py-0.5 rounded-full">${ds}</span></div><p class="text-xs text-navy-400 mt-0.5 truncate">${v.소속기관||'소속 미등록'}</p><div class="flex items-center gap-2 mt-1.5">${v.자격증?`<span class="text-[11px] bg-navy-50 text-navy-500 px-1.5 py-0.5 rounded">${truncate(v.자격증,12)}</span>`:''} ${v.대면비대면?`<span class="text-[11px] bg-success-500/10 text-success-600 px-1.5 py-0.5 rounded">${v.대면비대면}</span>`:''}</div></div><i class="fa-solid fa-chevron-right text-navy-300 text-xs mt-1"></i></div>`;
+    card.style.animationDelay = `${i * 0.08}s`;
+    card.onclick = () => showDetail(v, i + 1);
+    card.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="rank-badge rank-${i + 1}">${i + 1}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-sm text-navy-800">${escapeHtml(v.이름)}</span>
+            <span class="text-xs font-medium text-accent-600 bg-accent-500/10 px-2 py-0.5 rounded-full">${distStr}</span>
+          </div>
+          <p class="text-xs text-navy-400 mt-0.5 truncate">${escapeHtml(v.소속기관) || '소속 미등록'}</p>
+          <div class="flex items-center gap-2 mt-1.5">
+            ${v.자격증 ? `<span class="text-[11px] bg-navy-50 text-navy-500 px-1.5 py-0.5 rounded">${escapeHtml(truncate(v.자격증, 12))}</span>` : ''}
+            ${v.대면비대면 ? `<span class="text-[11px] bg-success-500/10 text-success-600 px-1.5 py-0.5 rounded">${escapeHtml(v.대면비대면)}</span>` : ''}
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-right text-navy-300 text-xs mt-1"></i>
+      </div>`;
     listEl.appendChild(card);
   });
 }
-function truncate(s, l) { return s.length > l ? s.slice(0,l)+'…' : s; }
+
+function truncate(str, len) { return str.length > len ? str.slice(0, len) + '…' : str; }
+function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
 // ========== 상세 팝업 ==========
 function showDetail(v, rank) {
   document.getElementById('detail-popup').classList.remove('hidden');
   document.getElementById('popup-title').textContent = `${rank}위 · ${v.이름}`;
   const fields = [
-    {icon:'fa-user-tag',label:'직역',value:v.직역},{icon:'fa-building',label:'소속기관',value:v.소속기관},
-    {icon:'fa-location-dot',label:'주소',value:v.주소},{icon:'fa-phone',label:'전화번호',value:v.전화번호},
-    {icon:'fa-envelope',label:'이메일',value:v.이메일},{icon:'fa-certificate',label:'자격증',value:v.자격증},
-    {icon:'fa-briefcase',label:'경력내용',value:v.경력내용},{icon:'fa-layer-group',label:'활동분야',value:v.활동분야},
-    {icon:'fa-video',label:'대면/비대면',value:v.대면비대면}
+    { icon:'fa-user-tag', label:'직역', value:v.직역 },
+    { icon:'fa-building', label:'소속기관', value:v.소속기관 },
+    { icon:'fa-location-dot', label:'주소', value:v.주소 },
+    { icon:'fa-phone', label:'전화번호', value:v.전화번호 },
+    { icon:'fa-envelope', label:'이메일', value:v.이메일 },
+    { icon:'fa-certificate', label:'자격증', value:v.자격증 },
+    { icon:'fa-briefcase', label:'경력내용', value:v.경력내용 },
+    { icon:'fa-layer-group', label:'활동분야', value:v.활동분야 },
+    { icon:'fa-video', label:'대면/비대면', value:v.대면비대면 },
   ];
-  document.getElementById('popup-content').innerHTML = fields.filter(f=>f.value).map(f=>`
+  document.getElementById('popup-content').innerHTML = fields.filter(f => f.value).map(f => `
     <div class="flex items-start gap-3 py-2 border-b border-navy-50 last:border-0">
       <div class="w-7 h-7 rounded-lg bg-navy-50 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fa-solid ${f.icon} text-xs text-navy-400"></i></div>
-      <div class="min-w-0"><p class="text-[11px] text-navy-400 font-medium">${f.label}</p><p class="text-sm text-navy-800 break-words">${f.value}</p></div>
+      <div class="min-w-0"><p class="text-[11px] text-navy-400 font-medium">${f.label}</p><p class="text-sm text-navy-800 break-words">${escapeHtml(f.value)}</p></div>
     </div>`).join('');
 }
+
 function closePopup() { document.getElementById('detail-popup').classList.add('hidden'); }
+
+document.addEventListener('click', function(e) {
+  const popup = document.getElementById('detail-popup');
+  if (!popup.classList.contains('hidden') && e.target === popup) closePopup();
+});
 
 // ========== 지도 마커 ==========
 function clearMapMarkers() {
-  markers.forEach(m=>m.setMap(null)); overlays.forEach(o=>o.setMap(null)); markers=[]; overlays=[];
-  if(clientMarker){clientMarker.setMap(null);clientMarker=null;}
-  if(clientOverlay){clientOverlay.setMap(null);clientOverlay=null;}
+  markers.forEach(m => m.setMap(null));
+  overlays.forEach(o => o.setMap(null));
+  markers = []; overlays = [];
+  if (clientMarker) { clientMarker.setMap(null); clientMarker = null; }
+  if (clientOverlay) { clientOverlay.setMap(null); clientOverlay = null; }
 }
-function renderMap(cc, top5) {
-  if (!map) return;
+
+function renderMap(clientCoord, top5) {
+  if (!map) { console.warn('[Map] map 객체 없음'); return; }
   clearMapMarkers();
-  const cp = new kakao.maps.LatLng(cc.lat, cc.lng);
-  clientMarker = new kakao.maps.Marker({ position:cp, map:map, image: new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', new kakao.maps.Size(24,35)), zIndex:10 });
-  clientOverlay = new kakao.maps.CustomOverlay({ position:cp, content:'<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>', yAnchor:2.2, map:map });
+
+  const clientPos = new kakao.maps.LatLng(clientCoord.lat, clientCoord.lng);
+  const clientImg = new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', new kakao.maps.Size(24, 35));
+  clientMarker = new kakao.maps.Marker({ position: clientPos, map: map, image: clientImg, zIndex: 10 });
+  clientOverlay = new kakao.maps.CustomOverlay({ position: clientPos, content: '<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>', yAnchor: 2.2, map: map });
+
   const bounds = new kakao.maps.LatLngBounds();
-  bounds.extend(cp);
-  top5.forEach((v,i) => {
+  bounds.extend(clientPos);
+
+  top5.forEach((v, i) => {
     const pos = new kakao.maps.LatLng(v.lat, v.lng);
     bounds.extend(pos);
-    const m = new kakao.maps.Marker({position:pos, map:map, zIndex:5});
-    markers.push(m);
-    const o = new kakao.maps.CustomOverlay({ position:pos, content:`<div class="marker-label">${i+1}위 ${v.이름} (${v.distance<1?(v.distance*1000).toFixed(0)+'m':v.distance.toFixed(1)+'km'})</div>`, yAnchor:2.2, map:map });
-    overlays.push(o);
-    kakao.maps.event.addListener(m, 'click', ()=>showDetail(v, i+1));
+    const marker = new kakao.maps.Marker({ position: pos, map: map, zIndex: 5 });
+    markers.push(marker);
+    const distLabel = v.distance < 1 ? (v.distance * 1000).toFixed(0) + 'm' : v.distance.toFixed(1) + 'km';
+    const overlay = new kakao.maps.CustomOverlay({ position: pos, content: `<div class="marker-label">${i + 1}위 ${escapeHtml(v.이름)} (${distLabel})</div>`, yAnchor: 2.2, map: map });
+    overlays.push(overlay);
+    kakao.maps.event.addListener(marker, 'click', () => showDetail(v, i + 1));
   });
+
   map.setBounds(bounds, 80);
 }
 
-document.addEventListener('keydown', e => { if(e.key==='Escape') closePopup(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
 </script>
 </body>
 </html>
