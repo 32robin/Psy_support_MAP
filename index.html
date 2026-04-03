@@ -3,24 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난심리지원 활동가 MAP</title>
+<title>재난 심리지원 활동가 MAP</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-<!--
-  ====================================================================
-  카카오맵 SDK 로드
-  - https:// 명시 (file:// 환경 대응)
-  - autoload=false → kakao.maps.load() 콜백에서 수동 초기화
-  
-  [중요] 2025.12.3 카카오 개편 이후 도메인 등록 위치 변경됨!
-  기존: 앱 설정 → 플랫폼 → Web → 사이트 도메인
-  현재: 앱 → 플랫폼 키 → JavaScript 키 → JavaScript SDK 도메인
-  ====================================================================
--->
 <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false"></script>
-
 <script>
 tailwind.config = {
   theme: {
@@ -30,10 +17,7 @@ tailwind.config = {
         accent: { 400:'#38bdf8', 500:'#0ea5e9', 600:'#0284c7' },
         success: { 400:'#4ade80', 500:'#22c55e', 600:'#16a34a' }
       },
-      fontFamily: {
-        display: ['Pretendard', 'system-ui', 'sans-serif'],
-        body: ['Pretendard', 'system-ui', 'sans-serif']
-      }
+      fontFamily: { display:['Pretendard','system-ui','sans-serif'], body:['Pretendard','system-ui','sans-serif'] }
     }
   }
 }
@@ -42,31 +26,12 @@ tailwind.config = {
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Pretendard', system-ui, sans-serif; }
-  .login-bg {
-    background: linear-gradient(135deg, #091524 0%, #1b3a5c 50%, #0e2035 100%);
-    position: relative; overflow: hidden;
-  }
-  .login-bg::before {
-    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 50%, rgba(14,165,233,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 20%, rgba(56,189,248,0.05) 0%, transparent 40%);
-    animation: bgShift 15s ease-in-out infinite alternate;
-  }
-  @keyframes bgShift { 0%{transform:translate(0,0) rotate(0deg)} 100%{transform:translate(2%,1%) rotate(2deg)} }
-  .login-card {
-    background: rgba(255,255,255,0.03); backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 25px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
-  }
-  .sidebar-scroll::-webkit-scrollbar { width:4px }
-  .sidebar-scroll::-webkit-scrollbar-track { background:transparent }
-  .sidebar-scroll::-webkit-scrollbar-thumb { background:#b3c1db; border-radius:4px }
-  .volunteer-card { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); border-left: 3px solid transparent; }
-  .volunteer-card:hover { transform:translateX(4px); border-left-color:#0ea5e9; background:#f0f3f8; }
+  .login-bg { background: #ffffff; }
+  .login-card { background:#fff; border:1px solid #d9e0ed; box-shadow:0 8px 30px rgba(27,58,92,0.12); }
+  .sidebar-scroll::-webkit-scrollbar { width:4px } .sidebar-scroll::-webkit-scrollbar-track { background:transparent } .sidebar-scroll::-webkit-scrollbar-thumb { background:#b3c1db; border-radius:4px }
+  .volunteer-card { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); border-left: 4px solid transparent; }
+  .volunteer-card:hover { transform:translateX(4px); background:#f0f3f8; }
   .rank-badge { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-weight:700; font-size:13px; color:#fff; flex-shrink:0; }
-  .rank-1{background:linear-gradient(135deg,#0ea5e9,#0284c7)} .rank-2{background:linear-gradient(135deg,#38bdf8,#0ea5e9)}
-  .rank-3{background:linear-gradient(135deg,#6783b7,#4a6fa5)} .rank-4{background:linear-gradient(135deg,#8da2c9,#6783b7)}
-  .rank-5{background:linear-gradient(135deg,#b3c1db,#8da2c9)}
   .popup-overlay { background:rgba(9,21,36,0.6); backdrop-filter:blur(4px); }
   .toast { animation: slideInRight 0.4s cubic-bezier(0.4,0,0.2,1); }
   @keyframes slideInRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
@@ -75,10 +40,14 @@ tailwind.config = {
   .spinner { border:3px solid #d9e0ed; border-top-color:#0ea5e9; border-radius:50%; width:20px; height:20px; animation:spin 0.8s linear infinite; display:inline-block; vertical-align:middle; }
   @keyframes spin { to{transform:rotate(360deg)} }
   .input-glow:focus { box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
-  .marker-label { background:#1b3a5c; color:#fff; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.2); white-space:nowrap; position:relative; }
-  .marker-label::after { content:''; position:absolute; bottom:-5px; left:50%; transform:translateX(-50%); border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid #1b3a5c; }
+  .marker-label { color:#fff; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.2); white-space:nowrap; position:relative; }
+  .marker-label::after { content:''; position:absolute; bottom:-5px; left:50%; transform:translateX(-50%); border-left:5px solid transparent; border-right:5px solid transparent; }
   .marker-label.client { background:#16a34a; }
-  .marker-label.client::after { border-top-color:#16a34a; }
+  .marker-label.client::after { border-top:5px solid #16a34a; }
+  /* 인원수 라디오 버튼 스타일 */
+  .count-radio { display:none; }
+  .count-label { cursor:pointer; padding:3px 10px; border-radius:8px; font-size:12px; font-weight:600; border:1px solid #d9e0ed; color:#6783b7; transition:all 0.2s; }
+  .count-radio:checked + .count-label { background:#1b3a5c; color:#fff; border-color:#1b3a5c; }
 </style>
 </head>
 <body class="bg-navy-50 text-navy-800">
@@ -87,37 +56,41 @@ tailwind.config = {
 <div id="login-screen" class="login-bg fixed inset-0 z-50 flex items-center justify-center">
   <div class="login-card rounded-2xl p-10 w-full max-w-md mx-4 text-center">
     <div class="mb-8">
-      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-lg">
-        <i class="fa-solid fa-shield-heart text-2xl text-white"></i>
+      <div class="w-14 h-14 mx-auto mb-4 rounded-xl bg-navy-700 flex items-center justify-center">
+        <i class="fa-solid fa-heart text-xl text-white"></i>
       </div>
-      <h1 class="text-2xl font-bold text-white tracking-tight">재난심리지원 활동가 MAP</h1>
-      <p class="text-navy-300 text-sm mt-2">Disaster Psychological Support Volunteer Matching</p>
+      <h1 class="text-2xl font-bold text-navy-800 tracking-tight">재난 심리지원 활동가 MAP</h1>
+      <p class="text-navy-500 text-sm mt-2">한국심리학회 재난심리위원회 제작</p>
+      <p class="text-navy-400 text-xs mt-1">문의: 32robin@naver.com</p>
     </div>
     <div class="space-y-4">
       <div class="text-left">
-        <label class="text-navy-300 text-xs font-medium uppercase tracking-wider mb-1 block">아이디</label>
-        <input id="login-id" type="text" placeholder="ID 입력" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-navy-400 focus:outline-none focus:border-accent-500 transition input-glow text-sm">
+        <label class="text-navy-500 text-xs font-medium mb-1 block">아이디</label>
+        <input id="login-id" type="text" placeholder="ID 입력" class="w-full px-4 py-3 rounded-xl bg-navy-50 border border-navy-200 text-navy-800 placeholder-navy-300 focus:outline-none focus:border-accent-500 transition input-glow text-sm">
       </div>
       <div class="text-left">
-        <label class="text-navy-300 text-xs font-medium uppercase tracking-wider mb-1 block">비밀번호</label>
-        <input id="login-pw" type="password" placeholder="비밀번호 입력" class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-navy-400 focus:outline-none focus:border-accent-500 transition input-glow text-sm" onkeydown="if(event.key==='Enter') attemptLogin()">
+        <label class="text-navy-500 text-xs font-medium mb-1 block">비밀번호</label>
+        <input id="login-pw" type="password" placeholder="비밀번호 입력" class="w-full px-4 py-3 rounded-xl bg-navy-50 border border-navy-200 text-navy-800 placeholder-navy-300 focus:outline-none focus:border-accent-500 transition input-glow text-sm" onkeydown="if(event.key==='Enter') attemptLogin()">
       </div>
-      <div id="login-error" class="text-red-400 text-sm hidden"><i class="fa-solid fa-circle-exclamation mr-1"></i> 아이디 또는 비밀번호가 올바르지 않습니다.</div>
-      <button onclick="attemptLogin()" class="w-full py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-white font-semibold text-sm hover:from-accent-400 hover:to-accent-500 transition-all shadow-lg hover:shadow-xl mt-2">로그인</button>
+      <div id="login-error" class="text-red-500 text-sm hidden"><i class="fa-solid fa-circle-exclamation mr-1"></i> 아이디 또는 비밀번호가 올바르지 않습니다.</div>
+      <button onclick="attemptLogin()" class="w-full py-3 rounded-xl bg-navy-700 text-white font-semibold text-sm hover:bg-navy-600 transition-all shadow-md mt-2">로그인</button>
     </div>
-    <p class="text-navy-400 text-xs mt-6">© 2025 KPA Disaster Psychology Support</p>
+    <p class="text-navy-300 text-xs mt-6">© 2025 KPA Disaster Psychology Support</p>
   </div>
 </div>
 
 <!-- ==================== 메인 콘텐츠 ==================== -->
 <div id="main-content" class="hidden h-screen flex">
   <aside class="w-[420px] h-full bg-white shadow-xl flex flex-col z-10 flex-shrink-0">
+    <!-- 헤더: 수정4,5 반영 -->
     <div class="px-6 py-5 border-b border-navy-100">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center"><i class="fa-solid fa-shield-heart text-white text-sm"></i></div>
-        <div><h1 class="text-base font-bold text-navy-800 leading-tight">재난심리지원 활동가 MAP</h1><p class="text-[11px] text-navy-400">Top 5 Priority Match System</p></div>
+        <div><h1 class="text-base font-bold text-navy-800 leading-tight">재난 심리지원 활동가 MAP</h1><p class="text-[11px] text-navy-400">한국심리학회 재난심리위원회 제작 · 문의: 32robin@naver.com</p></div>
       </div>
     </div>
+
+    <!-- 데이터 관리 -->
     <div class="px-6 py-4 border-b border-navy-100">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-semibold text-navy-500 uppercase tracking-wider"><i class="fa-solid fa-database mr-1.5 text-accent-500"></i>활동가 데이터</h2>
@@ -132,30 +105,59 @@ tailwind.config = {
       </div>
       <div id="upload-status" class="mt-2 text-xs text-navy-400 hidden"></div>
     </div>
+
+    <!-- 내담자 검색 + 필터 -->
     <div class="px-6 py-4 border-b border-navy-100">
       <h2 class="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-location-dot mr-1.5 text-success-500"></i>내담자 위치 검색</h2>
       <div class="flex gap-2">
         <input id="client-address" type="text" placeholder="내담자 주소를 입력하세요" class="flex-1 px-4 py-2.5 rounded-xl border border-navy-200 text-sm focus:outline-none focus:border-accent-500 transition input-glow bg-navy-50" onkeydown="if(event.key==='Enter') searchMatch()">
         <button onclick="searchMatch()" id="search-btn" class="px-4 py-2.5 rounded-xl bg-navy-700 text-white text-sm font-medium hover:bg-navy-600 transition-all shadow-md hover:shadow-lg flex items-center gap-1.5"><i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span></button>
       </div>
+      <!-- 필터 행 1: 대면/비대면 -->
       <div class="flex items-center gap-4 mt-3">
         <label class="flex items-center gap-1.5 cursor-pointer text-xs text-navy-500"><input type="checkbox" id="filter-face" class="accent-accent-500 rounded" checked><span>대면</span></label>
         <label class="flex items-center gap-1.5 cursor-pointer text-xs text-navy-500"><input type="checkbox" id="filter-remote" class="accent-accent-500 rounded" checked><span>비대면</span></label>
       </div>
+      <!-- 수정2: 인원 수 선택 -->
+      <div class="flex items-center gap-2 mt-3">
+        <span class="text-[11px] text-navy-400 font-medium mr-1">표시 인원</span>
+        <input type="radio" name="match-count" id="cnt-5" value="5" class="count-radio" checked><label for="cnt-5" class="count-label">5명</label>
+        <input type="radio" name="match-count" id="cnt-10" value="10" class="count-radio"><label for="cnt-10" class="count-label">10명</label>
+        <input type="radio" name="match-count" id="cnt-20" value="20" class="count-radio"><label for="cnt-20" class="count-label">20명</label>
+        <input type="radio" name="match-count" id="cnt-50" value="50" class="count-radio"><label for="cnt-50" class="count-label">50명</label>
+      </div>
     </div>
+
+    <!-- 직역 범례 -->
+    <div class="px-6 py-2.5 border-b border-navy-100">
+      <div class="flex flex-wrap gap-x-3 gap-y-1" id="legend-bar">
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#3B82F6;display:inline-block"></span>상담심리</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#8B5CF6;display:inline-block"></span>임상심리</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#06B6D4;display:inline-block"></span>상담</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#EAB308;display:inline-block"></span>간호</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#F97316;display:inline-block"></span>사회복지</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block"></span>정신의학</span>
+        <span class="text-[10px] text-navy-400 flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#6783b7;display:inline-block"></span>기타</span>
+      </div>
+    </div>
+
+    <!-- 매칭 결과 -->
     <div class="flex-1 overflow-y-auto sidebar-scroll px-6 py-4">
       <div id="result-placeholder" class="flex flex-col items-center justify-center h-full text-center">
         <div class="w-20 h-20 rounded-full bg-navy-50 flex items-center justify-center mb-4"><i class="fa-solid fa-map-location-dot text-3xl text-navy-300"></i></div>
         <p class="text-sm text-navy-400 font-medium">내담자 주소를 검색하면</p>
-        <p class="text-sm text-navy-400">가장 가까운 활동가 5명이 표시됩니다.</p>
+        <p class="text-sm text-navy-400">가까운 활동가가 표시됩니다.</p>
       </div>
       <div id="result-list" class="hidden space-y-2"></div>
     </div>
+
+    <!-- 하단 -->
     <div class="px-6 py-3 border-t border-navy-100 flex items-center justify-between">
-      <span class="text-[11px] text-navy-400">v1.0 · KPA</span>
+      <span class="text-[11px] text-navy-400">v1.1 · KPA</span>
       <button onclick="logout()" class="text-xs text-navy-400 hover:text-red-500 transition flex items-center gap-1"><i class="fa-solid fa-right-from-bracket"></i> 로그아웃</button>
     </div>
   </aside>
+
   <main class="flex-1 relative">
     <div id="kakao-map" class="w-full h-full"></div>
     <div id="map-badge" class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg border border-navy-100 z-10">
@@ -167,7 +169,7 @@ tailwind.config = {
 <!-- 상세 정보 팝업 -->
 <div id="detail-popup" class="popup-overlay fixed inset-0 z-40 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden fade-in">
-    <div class="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4 flex items-center justify-between">
+    <div id="popup-header" class="px-6 py-4 flex items-center justify-between">
       <h3 class="text-white font-semibold text-base" id="popup-title">활동가 상세 정보</h3>
       <button onclick="closePopup()" class="text-white/60 hover:text-white transition"><i class="fa-solid fa-xmark text-lg"></i></button>
     </div>
@@ -182,7 +184,7 @@ tailwind.config = {
 
 <!-- ==================== 스크립트 ==================== -->
 <script>
-// ========== 상태 관리 ==========
+// ========== 상태 ==========
 let volunteersDB = [];
 let map = null;
 let markers = [];
@@ -190,6 +192,44 @@ let overlays = [];
 let clientMarker = null;
 let clientOverlay = null;
 let kakaoReady = false;
+
+// ========== 수정1: 직역별 색상 맵 ==========
+const FIELD_COLORS = {
+  '상담심리': { bg:'#3B82F6', light:'#EFF6FF', text:'#1D4ED8', border:'#3B82F6' },
+  '임상심리': { bg:'#8B5CF6', light:'#F5F3FF', text:'#6D28D9', border:'#8B5CF6' },
+  '상담':     { bg:'#06B6D4', light:'#ECFEFF', text:'#0891B2', border:'#06B6D4' },
+  '간호':     { bg:'#EAB308', light:'#FEFCE8', text:'#A16207', border:'#EAB308' },
+  '사회복지': { bg:'#F97316', light:'#FFF7ED', text:'#C2410C', border:'#F97316' },
+  '정신의학': { bg:'#22C55E', light:'#F0FDF4', text:'#15803D', border:'#22C55E' },
+};
+const DEFAULT_COLOR = { bg:'#6783b7', light:'#f0f3f8', text:'#4a6fa5', border:'#6783b7' };
+
+function getFieldColor(직역) {
+  if (!직역) return DEFAULT_COLOR;
+  for (const [key, val] of Object.entries(FIELD_COLORS)) {
+    if (직역.includes(key)) return val;
+  }
+  return DEFAULT_COLOR;
+}
+
+// ========== 수정3: 소요시간 추정 ==========
+function estimateTime(distKm) {
+  const carMin = Math.round(distKm / 0.7); // 평균 시속 ~42km/h (시내 포함)
+  const walkMin = Math.round(distKm / 0.08); // 평균 시속 ~4.8km/h
+  let carStr, walkStr;
+  if (carMin < 1) carStr = '1분 미만';
+  else if (carMin < 60) carStr = `약 ${carMin}분`;
+  else carStr = `약 ${Math.floor(carMin/60)}시간 ${carMin%60}분`;
+  if (walkMin < 60) walkStr = `약 ${walkMin}분`;
+  else walkStr = `약 ${Math.floor(walkMin/60)}시간 ${walkMin%60 > 0 ? walkMin%60+'분' : ''}`;
+  return { car: carStr, walk: walkStr };
+}
+
+// ========== 수정2: 선택된 인원 수 ==========
+function getMatchCount() {
+  const el = document.querySelector('input[name="match-count"]:checked');
+  return el ? parseInt(el.value) : 5;
+}
 
 // ========== 로그인 ==========
 function attemptLogin() {
@@ -206,7 +246,6 @@ function attemptLogin() {
     document.getElementById('login-pw').value = '';
   }
 }
-
 function logout() {
   document.getElementById('main-content').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
@@ -227,319 +266,188 @@ function showToast(message, type = 'info') {
   setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
 }
 
-// ==========================================================
-//  카카오맵 초기화
-//  head의 <script>가 정상 로드되었으면 kakao 객체가 존재함
-//  실패 시 동적으로 재시도
-// ==========================================================
+// ========== 카카오맵 ==========
 function initMap() {
-  // head에서 이미 로드된 경우
   if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
-    console.log('[KakaoMap] head에서 SDK 로드 확인됨');
-    doKakaoInit();
-    return;
+    doKakaoInit(); return;
   }
-
-  // head에서 로드 실패 → 동적으로 재시도
-  console.warn('[KakaoMap] head에서 SDK 로드 실패, 동적 로드 시도...');
   const script = document.createElement('script');
   script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=26f17c8b2c7161d6de9715a0ee89f7bc&libraries=services&autoload=false';
-
   script.onload = function() {
-    if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
-      console.log('[KakaoMap] 동적 로드 성공');
-      doKakaoInit();
-    } else {
-      handleSDKFailure('SDK 스크립트는 로드되었으나 kakao 객체가 생성되지 않았습니다.');
-    }
+    if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') doKakaoInit();
+    else handleSDKFailure('kakao 객체 미생성');
   };
-
-  script.onerror = function() {
-    handleSDKFailure('SDK 스크립트를 다운로드할 수 없습니다.');
-  };
-
+  script.onerror = function() { handleSDKFailure('스크립트 다운로드 실패'); };
   document.head.appendChild(script);
 }
-
 function doKakaoInit() {
   kakao.maps.load(function() {
     try {
-      const container = document.getElementById('kakao-map');
-      map = new kakao.maps.Map(container, {
-        center: new kakao.maps.LatLng(36.5, 127.5),
-        level: 12
-      });
+      map = new kakao.maps.Map(document.getElementById('kakao-map'), { center: new kakao.maps.LatLng(36.5, 127.5), level: 12 });
       map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
       kakaoReady = true;
-      console.log('[KakaoMap] ✅ 지도 초기화 성공!');
-    } catch (e) {
-      console.error('[KakaoMap] 지도 생성 실패:', e);
-      showToast('카카오맵 초기화 중 오류 발생', 'error');
-    }
+    } catch (e) { console.error('[KakaoMap]', e); showToast('카카오맵 초기화 오류', 'error'); }
   });
 }
-
 function handleSDKFailure(reason) {
-  console.error('============================================');
-  console.error('[KakaoMap] SDK 로드 실패: ' + reason);
-  console.error('');
-  console.error('2025.12.3 카카오 개편 이후 도메인 등록 위치가 변경되었습니다!');
-  console.error('');
-  console.error('올바른 경로:');
-  console.error('  developers.kakao.com → 내 앱 선택');
-  console.error('  → 좌측 메뉴 [앱] → [플랫폼 키]');
-  console.error('  → [JavaScript 키] 클릭');
-  console.error('  → [JavaScript SDK 도메인]에 https://32robin.github.io 등록');
-  console.error('');
-  console.error('※ 기존의 [플랫폼] → [Web] → [사이트 도메인]은 더 이상 작동하지 않습니다!');
-  console.error('============================================');
-
-  showToast('카카오맵 SDK 로드 실패 — F12 콘솔에서 해결 방법을 확인하세요.', 'error');
-
-  // 지도 영역에 안내 메시지 표시
-  const mapEl = document.getElementById('kakao-map');
-  if (mapEl) {
-    mapEl.style.display = 'flex';
-    mapEl.style.alignItems = 'center';
-    mapEl.style.justifyContent = 'center';
-    mapEl.style.backgroundColor = '#f0f3f8';
-    mapEl.innerHTML = `
-      <div style="text-align:center; padding:40px; max-width:500px;">
-        <i class="fa-solid fa-triangle-exclamation" style="font-size:48px; color:#e74c3c; margin-bottom:16px;"></i>
-        <h3 style="font-size:18px; font-weight:700; color:#0e2035; margin-bottom:12px;">카카오맵을 불러올 수 없습니다</h3>
-        <p style="font-size:13px; color:#6783b7; line-height:1.6; margin-bottom:16px;">
-          2025.12 카카오 개편 이후 도메인 등록 위치가 변경되었습니다.
-        </p>
-        <div style="background:#fff; border:1px solid #d9e0ed; border-radius:12px; padding:16px; text-align:left; font-size:12px; color:#142d48; line-height:1.8;">
-          <strong>해결 방법:</strong><br>
-          1. <a href="https://developers.kakao.com" target="_blank" style="color:#0ea5e9; text-decoration:underline;">developers.kakao.com</a> 접속<br>
-          2. 내 앱 선택 → 좌측 <strong>[앱]</strong> → <strong>[플랫폼 키]</strong><br>
-          3. <strong>[JavaScript 키]</strong> 클릭<br>
-          4. <strong>[JavaScript SDK 도메인]</strong>에<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;<code style="background:#f0f3f8; padding:2px 6px; border-radius:4px;">https://32robin.github.io</code> 등록<br>
-          5. 저장 후 이 페이지 새로고침 (Ctrl+Shift+R)
-        </div>
-      </div>
-    `;
-  }
+  console.error('[KakaoMap] ' + reason);
+  showToast('카카오맵 SDK 로드 실패 — F12 콘솔 확인', 'error');
+  const el = document.getElementById('kakao-map');
+  if (el) { el.style.display='flex'; el.style.alignItems='center'; el.style.justifyContent='center'; el.style.backgroundColor='#f0f3f8';
+    el.innerHTML = '<div style="text-align:center;padding:40px;max-width:500px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c;margin-bottom:16px;"></i><h3 style="font-size:18px;font-weight:700;color:#0e2035;margin-bottom:12px;">카카오맵을 불러올 수 없습니다</h3><div style="background:#fff;border:1px solid #d9e0ed;border-radius:12px;padding:16px;text-align:left;font-size:12px;color:#142d48;line-height:1.8;"><strong>해결:</strong><br>developers.kakao.com → 내 앱<br>→ [앱] → [플랫폼 키] → [JavaScript 키]<br>→ [JavaScript SDK 도메인]에<br><code style="background:#f0f3f8;padding:2px 6px;border-radius:4px;">https://32robin.github.io</code> 등록</div></div>'; }
 }
 
 // ========== 지오코딩 ==========
 function waitForKakao() {
   return new Promise((resolve, reject) => {
     if (kakaoReady) { resolve(); return; }
-    let attempts = 0;
-    const timer = setInterval(() => {
-      if (kakaoReady) { clearInterval(timer); resolve(); }
-      else if (++attempts > 50) {
-        clearInterval(timer);
-        reject(new Error('카카오맵 API 로딩 타임아웃 (10초)'));
-      }
-    }, 200);
+    let a = 0;
+    const t = setInterval(() => { if (kakaoReady) { clearInterval(t); resolve(); } else if (++a > 50) { clearInterval(t); reject(new Error('타임아웃')); } }, 200);
   });
 }
-
 async function geocodeAddress(address) {
   await waitForKakao();
   return new Promise((resolve, reject) => {
-    const geocoder = new kakao.maps.services.Geocoder();
-    geocoder.addressSearch(address, (result, status) => {
-      if (status === kakao.maps.services.Status.OK && result.length > 0) {
-        resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
-      } else {
-        reject(new Error(`주소 변환 실패: ${address} (status: ${status})`));
-      }
+    const gc = new kakao.maps.services.Geocoder();
+    gc.addressSearch(address, (r, s) => {
+      if (s === kakao.maps.services.Status.OK && r.length > 0) resolve({ lat: parseFloat(r[0].y), lng: parseFloat(r[0].x) });
+      else reject(new Error(`주소 변환 실패: ${address}`));
     });
   });
 }
 
-// ========== 엑셀 업로드 ==========
+// ========== 엑셀 ==========
 async function handleExcelUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
-
-  const statusEl = document.getElementById('upload-status');
-  statusEl.classList.remove('hidden');
-  statusEl.innerHTML = '<span class="spinner mr-2"></span>엑셀 파일을 읽는 중...';
-
+  const st = document.getElementById('upload-status');
+  st.classList.remove('hidden');
+  st.innerHTML = '<span class="spinner mr-2"></span>엑셀 파일을 읽는 중...';
   try {
     const data = await file.arrayBuffer();
-    const wb = XLSX.read(data, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-    if (json.length === 0) {
-      showToast('엑셀 파일에 데이터가 없습니다.', 'error');
-      statusEl.classList.add('hidden');
-      return;
-    }
-
-    const colMap = detectColumns(json[0]);
-    console.log('[Excel] 컬럼 매핑:', colMap);
-
-    const volunteers = json.map((row, i) => ({
-      id: i,
-      직역: String(row[colMap.직역] || ''),
-      이름: String(row[colMap.이름] || ''),
-      이메일: String(row[colMap.이메일] || ''),
-      전화번호: String(row[colMap.전화번호] || ''),
-      소속기관: String(row[colMap.소속기관] || ''),
-      주소: String(row[colMap.주소] || '').trim(),
-      자격증: String(row[colMap.자격증] || ''),
-      경력내용: String(row[colMap.경력내용] || ''),
-      활동분야: String(row[colMap.활동분야] || ''),
-      대면비대면: String(row[colMap.대면비대면] || ''),
-      lat: null, lng: null
+    const wb = XLSX.read(data, { type:'array' });
+    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' });
+    if (!json.length) { showToast('데이터 없음','error'); st.classList.add('hidden'); return; }
+    const cm = detectColumns(json[0]);
+    const vols = json.map((r,i) => ({
+      id:i, 직역:String(r[cm.직역]||''), 이름:String(r[cm.이름]||''), 이메일:String(r[cm.이메일]||''),
+      전화번호:String(r[cm.전화번호]||''), 소속기관:String(r[cm.소속기관]||''), 주소:String(r[cm.주소]||'').trim(),
+      자격증:String(r[cm.자격증]||''), 경력내용:String(r[cm.경력내용]||''), 활동분야:String(r[cm.활동분야]||''),
+      대면비대면:String(r[cm.대면비대면]||''), lat:null, lng:null
     }));
-
-    statusEl.innerHTML = `<span class="spinner mr-2"></span>주소를 좌표로 변환 중... (0/${volunteers.length})`;
-    let okCount = 0, failCount = 0;
-
-    for (let i = 0; i < volunteers.length; i++) {
-      const v = volunteers[i];
-      if (!v.주소) { failCount++; continue; }
-      try {
-        const coord = await geocodeAddress(v.주소);
-        v.lat = coord.lat;
-        v.lng = coord.lng;
-        okCount++;
-      } catch (e) {
-        console.warn(`[Geocode] 실패 #${i} "${v.이름}": ${v.주소}`, e.message);
-        failCount++;
-      }
-      statusEl.innerHTML = `<span class="spinner mr-2"></span>주소를 좌표로 변환 중... (${i + 1}/${volunteers.length})`;
+    st.innerHTML = `<span class="spinner mr-2"></span>좌표 변환 중... (0/${vols.length})`;
+    let ok=0, fail=0;
+    for (let i=0;i<vols.length;i++) {
+      const v=vols[i];
+      if(!v.주소){fail++;continue;}
+      try { const c=await geocodeAddress(v.주소); v.lat=c.lat; v.lng=c.lng; ok++; }
+      catch { fail++; }
+      st.innerHTML = `<span class="spinner mr-2"></span>좌표 변환 중... (${i+1}/${vols.length})`;
     }
-
-    volunteersDB = volunteers.filter(v => v.lat !== null);
-    saveToStorage();
-    updateDataCount();
-    statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>완료: ${okCount}명 성공` + (failCount > 0 ? `, ${failCount}명 실패` : '');
-    showToast(`${okCount}명의 활동가 데이터가 등록되었습니다.`, 'success');
-  } catch (e) {
-    console.error('[Excel]', e);
-    showToast('엑셀 파일 처리 중 오류가 발생했습니다.', 'error');
-    statusEl.classList.add('hidden');
-  }
-  event.target.value = '';
+    volunteersDB = vols.filter(v=>v.lat!==null);
+    saveToStorage(); updateDataCount();
+    st.innerHTML = `<i class="fa-solid fa-circle-check text-success-500 mr-1"></i>${ok}명 성공` + (fail?`, ${fail}명 실패`:'');
+    showToast(`${ok}명 등록 완료`,'success');
+  } catch(e) { console.error(e); showToast('엑셀 처리 오류','error'); st.classList.add('hidden'); }
+  event.target.value='';
+}
+function detectColumns(r) {
+  const k=Object.keys(r), f=(kws)=>k.find(x=>kws.some(w=>x.includes(w)))||kws[0];
+  return { 직역:f(['직역','직종','분류']), 이름:f(['이름','성명','name']), 이메일:f(['이메일','메일','email']),
+    전화번호:f(['전화','연락처','phone']), 소속기관:f(['소속','기관','직장']), 주소:f(['주소','address','거주지']),
+    자격증:f(['자격증','자격','면허']), 경력내용:f(['경력','이력','career']),
+    활동분야:f(['활동분야','활동','분야','전문']), 대면비대면:f(['대면','비대면','방식','mode']) };
 }
 
-function detectColumns(firstRow) {
-  const keys = Object.keys(firstRow);
-  const find = (keywords) => keys.find(k => keywords.some(kw => k.includes(kw))) || keywords[0];
-  return {
-    직역: find(['직역','직종','분류']), 이름: find(['이름','성명','name']),
-    이메일: find(['이메일','메일','email']), 전화번호: find(['전화','연락처','phone','핸드폰']),
-    소속기관: find(['소속','기관','직장']), 주소: find(['주소','address','거주지']),
-    자격증: find(['자격증','자격','면허']), 경력내용: find(['경력','이력','career']),
-    활동분야: find(['활동분야','활동','분야','전문']), 대면비대면: find(['대면','비대면','방식','mode'])
-  };
-}
-
-// ========== LocalStorage ==========
-function saveToStorage() {
-  try { localStorage.setItem('kpa_volunteers', JSON.stringify(volunteersDB)); }
-  catch (e) { console.warn('[Storage] 저장 실패:', e); }
-}
+// ========== Storage ==========
+function saveToStorage() { try{localStorage.setItem('kpa_volunteers',JSON.stringify(volunteersDB))}catch{} }
 function loadFromStorage() {
-  try {
-    const stored = localStorage.getItem('kpa_volunteers');
-    if (stored) {
-      volunteersDB = JSON.parse(stored);
-      updateDataCount();
-      if (volunteersDB.length > 0) {
-        const el = document.getElementById('upload-status');
-        el.classList.remove('hidden');
-        el.innerHTML = `<i class="fa-solid fa-database text-accent-500 mr-1"></i>저장된 데이터 ${volunteersDB.length}명 로드 완료`;
-        showToast(`저장된 ${volunteersDB.length}명의 데이터를 불러왔습니다.`, 'info');
-      }
-    }
-  } catch (e) { console.warn('[Storage] 로드 실패:', e); }
+  try { const s=localStorage.getItem('kpa_volunteers'); if(s){volunteersDB=JSON.parse(s);updateDataCount();
+    if(volunteersDB.length>0){const el=document.getElementById('upload-status');el.classList.remove('hidden');
+    el.innerHTML=`<i class="fa-solid fa-database text-accent-500 mr-1"></i>저장된 데이터 ${volunteersDB.length}명`;
+    showToast(`${volunteersDB.length}명 데이터 로드`,'info');}}} catch{}
 }
 function clearData() {
-  if (!confirm('모든 활동가 데이터를 삭제하시겠습니까?')) return;
-  volunteersDB = []; localStorage.removeItem('kpa_volunteers'); updateDataCount(); clearMapMarkers();
+  if(!confirm('모든 데이터를 삭제하시겠습니까?'))return;
+  volunteersDB=[];localStorage.removeItem('kpa_volunteers');updateDataCount();clearMapMarkers();
   document.getElementById('result-list').classList.add('hidden');
   document.getElementById('result-placeholder').classList.remove('hidden');
   document.getElementById('upload-status').classList.add('hidden');
-  showToast('데이터가 초기화되었습니다.', 'warning');
+  showToast('초기화 완료','warning');
 }
-function updateDataCount() { document.getElementById('data-count').textContent = `${volunteersDB.length}명`; }
+function updateDataCount(){document.getElementById('data-count').textContent=`${volunteersDB.length}명`;}
 
 // ========== 하버사인 ==========
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+function haversineDistance(lat1,lng1,lat2,lng2) {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// ========== TOP 5 매칭 ==========
+// ========== 매칭 ==========
 async function searchMatch() {
-  const address = document.getElementById('client-address').value.trim();
-  if (!address) { showToast('내담자 주소를 입력해주세요.', 'warning'); return; }
-  if (volunteersDB.length === 0) { showToast('먼저 활동가 데이터를 업로드해주세요.', 'warning'); return; }
-
-  const btn = document.getElementById('search-btn');
-  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
-
+  const address=document.getElementById('client-address').value.trim();
+  if(!address){showToast('주소를 입력해주세요.','warning');return;}
+  if(!volunteersDB.length){showToast('먼저 데이터를 업로드해주세요.','warning');return;}
+  const btn=document.getElementById('search-btn');
+  btn.innerHTML='<span class="spinner"></span>';btn.disabled=true;
   try {
-    const clientCoord = await geocodeAddress(address);
-    const fFace = document.getElementById('filter-face').checked;
-    const fRemote = document.getElementById('filter-remote').checked;
-
-    let filtered = volunteersDB.filter(v => {
-      if (fFace && fRemote) return true;
-      if (fFace && !fRemote) return !v.대면비대면.includes('비대면');
-      if (!fFace && fRemote) return v.대면비대면.includes('비대면');
-      return true;
+    const cc=await geocodeAddress(address);
+    const fF=document.getElementById('filter-face').checked, fR=document.getElementById('filter-remote').checked;
+    let filtered=volunteersDB.filter(v=>{
+      if(fF&&fR)return true; if(fF&&!fR)return !v.대면비대면.includes('비대면');
+      if(!fF&&fR)return v.대면비대면.includes('비대면'); return true;
     });
-
-    if (filtered.length === 0) { showToast('필터 조건에 맞는 활동가가 없습니다.', 'warning'); return; }
-
-    const withDist = filtered.map(v => ({ ...v, distance: haversineDistance(clientCoord.lat, clientCoord.lng, v.lat, v.lng) }));
-    withDist.sort((a, b) => a.distance - b.distance);
-    const top5 = withDist.slice(0, 5);
-
-    renderResults(top5);
-    renderMap(clientCoord, top5);
+    if(!filtered.length){showToast('필터 조건에 맞는 활동가 없음','warning');return;}
+    const wd=filtered.map(v=>({...v,distance:haversineDistance(cc.lat,cc.lng,v.lat,v.lng)}));
+    wd.sort((a,b)=>a.distance-b.distance);
+    const count = getMatchCount();
+    const topN = wd.slice(0, count);
+    renderResults(topN);
+    renderMap(cc, topN);
     document.getElementById('map-badge').classList.add('hidden');
-  } catch (e) {
-    console.error('[Search]', e);
-    showToast('주소를 찾을 수 없습니다. 정확한 주소를 입력해주세요.', 'error');
-  } finally {
-    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>'; btn.disabled = false;
-  }
+  } catch(e){console.error(e);showToast('주소를 찾을 수 없습니다.','error');}
+  finally{btn.innerHTML='<i class="fa-solid fa-magnifying-glass text-xs"></i><span>검색</span>';btn.disabled=false;}
 }
 
-// ========== 결과 렌더링 ==========
-function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-function truncate(str, len) { return str.length > len ? str.slice(0, len) + '…' : str; }
+// ========== 유틸 ==========
+function escapeHtml(s){if(!s)return '';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function truncate(s,l){return s.length>l?s.slice(0,l)+'…':s;}
 
-function renderResults(top5) {
-  const listEl = document.getElementById('result-list');
+// ========== 결과 렌더링 (수정1,3 반영) ==========
+function renderResults(topN) {
+  const listEl=document.getElementById('result-list');
   document.getElementById('result-placeholder').classList.add('hidden');
   listEl.classList.remove('hidden');
-  listEl.innerHTML = '';
+  listEl.innerHTML='';
 
-  top5.forEach((v, i) => {
-    const distStr = v.distance < 1 ? `${(v.distance * 1000).toFixed(0)}m` : `${v.distance.toFixed(1)}km`;
-    const card = document.createElement('div');
-    card.className = 'volunteer-card bg-white rounded-xl p-3.5 cursor-pointer border border-navy-100 fade-in';
-    card.style.animationDelay = `${i * 0.08}s`;
-    card.onclick = () => showDetail(v, i + 1);
-    card.innerHTML = `
+  topN.forEach((v,i)=>{
+    const distStr = v.distance<1 ? `${(v.distance*1000).toFixed(0)}m` : `${v.distance.toFixed(1)}km`;
+    const color = getFieldColor(v.직역);
+    const time = estimateTime(v.distance);
+
+    const card=document.createElement('div');
+    card.className='volunteer-card bg-white rounded-xl p-3.5 cursor-pointer border border-navy-100 fade-in';
+    card.style.animationDelay=`${Math.min(i,10)*0.06}s`;
+    card.style.borderLeftColor=color.border;
+    card.onclick=()=>showDetail(v,i+1);
+
+    card.innerHTML=`
       <div class="flex items-start gap-3">
-        <div class="rank-badge rank-${i + 1}">${i + 1}</div>
+        <div class="rank-badge" style="background:${color.bg}">${i+1}</div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between">
             <span class="font-semibold text-sm text-navy-800">${escapeHtml(v.이름)}</span>
-            <span class="text-xs font-medium text-accent-600 bg-accent-500/10 px-2 py-0.5 rounded-full">${distStr}</span>
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:${color.light};color:${color.text}">${distStr}</span>
           </div>
-          <p class="text-xs text-navy-400 mt-0.5 truncate">${escapeHtml(v.소속기관) || '소속 미등록'}</p>
-          <div class="flex items-center gap-2 mt-1.5">
-            ${v.자격증 ? `<span class="text-[11px] bg-navy-50 text-navy-500 px-1.5 py-0.5 rounded">${escapeHtml(truncate(v.자격증, 12))}</span>` : ''}
-            ${v.대면비대면 ? `<span class="text-[11px] bg-success-500/10 text-success-600 px-1.5 py-0.5 rounded">${escapeHtml(v.대면비대면)}</span>` : ''}
+          <p class="text-xs text-navy-400 mt-0.5 truncate">${escapeHtml(v.소속기관)||'소속 미등록'}</p>
+          <div class="flex items-center gap-2 mt-1">
+            ${v.직역?`<span class="text-[11px] px-1.5 py-0.5 rounded font-medium" style="background:${color.light};color:${color.text}">${escapeHtml(v.직역)}</span>`:''}
+            ${v.대면비대면?`<span class="text-[11px] bg-success-500/10 text-success-600 px-1.5 py-0.5 rounded">${escapeHtml(v.대면비대면)}</span>`:''}
+          </div>
+          <div class="flex items-center gap-3 mt-1.5 text-[10px] text-navy-400">
+            <span><i class="fa-solid fa-car mr-0.5"></i>${time.car}</span>
+            <span><i class="fa-solid fa-person-walking mr-0.5"></i>${time.walk}</span>
           </div>
         </div>
         <i class="fa-solid fa-chevron-right text-navy-300 text-xs mt-1"></i>
@@ -548,61 +456,70 @@ function renderResults(top5) {
   });
 }
 
-// ========== 상세 팝업 ==========
-function showDetail(v, rank) {
+// ========== 상세 팝업 (수정1 반영) ==========
+function showDetail(v,rank) {
+  const color=getFieldColor(v.직역);
   document.getElementById('detail-popup').classList.remove('hidden');
-  document.getElementById('popup-title').textContent = `${rank}위 · ${v.이름}`;
-  const fields = [
-    { icon:'fa-user-tag', label:'직역', value:v.직역 },
-    { icon:'fa-building', label:'소속기관', value:v.소속기관 },
-    { icon:'fa-location-dot', label:'주소', value:v.주소 },
-    { icon:'fa-phone', label:'전화번호', value:v.전화번호 },
-    { icon:'fa-envelope', label:'이메일', value:v.이메일 },
-    { icon:'fa-certificate', label:'자격증', value:v.자격증 },
-    { icon:'fa-briefcase', label:'경력내용', value:v.경력내용 },
-    { icon:'fa-layer-group', label:'활동분야', value:v.활동분야 },
-    { icon:'fa-video', label:'대면/비대면', value:v.대면비대면 },
+  const header=document.getElementById('popup-header');
+  header.style.background=`linear-gradient(135deg, ${color.bg}, ${color.bg}dd)`;
+  document.getElementById('popup-title').textContent=`${rank}위 · ${v.이름}`;
+  const time=estimateTime(v.distance||0);
+  const distStr=v.distance?(v.distance<1?`${(v.distance*1000).toFixed(0)}m`:`${v.distance.toFixed(1)}km`):'';
+  const fields=[
+    {icon:'fa-user-tag',label:'직역',value:v.직역},
+    {icon:'fa-building',label:'소속기관',value:v.소속기관},
+    {icon:'fa-location-dot',label:'주소',value:v.주소},
+    {icon:'fa-route',label:'거리/소요시간',value:distStr?`${distStr} · 자동차 ${time.car} · 도보 ${time.walk}`:''},
+    {icon:'fa-phone',label:'전화번호',value:v.전화번호},
+    {icon:'fa-envelope',label:'이메일',value:v.이메일},
+    {icon:'fa-certificate',label:'자격증',value:v.자격증},
+    {icon:'fa-briefcase',label:'경력내용',value:v.경력내용},
+    {icon:'fa-layer-group',label:'활동분야',value:v.활동분야},
+    {icon:'fa-video',label:'대면/비대면',value:v.대면비대면},
   ];
-  document.getElementById('popup-content').innerHTML = fields.filter(f => f.value).map(f => `
+  document.getElementById('popup-content').innerHTML=fields.filter(f=>f.value).map(f=>`
     <div class="flex items-start gap-3 py-2 border-b border-navy-50 last:border-0">
-      <div class="w-7 h-7 rounded-lg bg-navy-50 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fa-solid ${f.icon} text-xs text-navy-400"></i></div>
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style="background:${color.light}"><i class="fa-solid ${f.icon} text-xs" style="color:${color.text}"></i></div>
       <div class="min-w-0"><p class="text-[11px] text-navy-400 font-medium">${f.label}</p><p class="text-sm text-navy-800 break-words">${escapeHtml(f.value)}</p></div>
     </div>`).join('');
 }
-function closePopup() { document.getElementById('detail-popup').classList.add('hidden'); }
-document.addEventListener('click', e => { const p = document.getElementById('detail-popup'); if (!p.classList.contains('hidden') && e.target === p) closePopup(); });
+function closePopup(){document.getElementById('detail-popup').classList.add('hidden');}
+document.addEventListener('click',e=>{const p=document.getElementById('detail-popup');if(!p.classList.contains('hidden')&&e.target===p)closePopup();});
 
-// ========== 지도 마커 ==========
-function clearMapMarkers() {
-  markers.forEach(m => m.setMap(null)); overlays.forEach(o => o.setMap(null)); markers = []; overlays = [];
-  if (clientMarker) { clientMarker.setMap(null); clientMarker = null; }
-  if (clientOverlay) { clientOverlay.setMap(null); clientOverlay = null; }
+// ========== 지도 마커 (수정1 반영) ==========
+function clearMapMarkers(){
+  markers.forEach(m=>m.setMap(null));overlays.forEach(o=>o.setMap(null));markers=[];overlays=[];
+  if(clientMarker){clientMarker.setMap(null);clientMarker=null;}
+  if(clientOverlay){clientOverlay.setMap(null);clientOverlay=null;}
 }
-
-function renderMap(clientCoord, top5) {
-  if (!map) return;
+function renderMap(cc,topN){
+  if(!map)return;
   clearMapMarkers();
-  const cp = new kakao.maps.LatLng(clientCoord.lat, clientCoord.lng);
-  clientMarker = new kakao.maps.Marker({ position: cp, map: map, image: new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png', new kakao.maps.Size(24, 35)), zIndex: 10 });
-  clientOverlay = new kakao.maps.CustomOverlay({ position: cp, content: '<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>', yAnchor: 2.2, map: map });
-
-  const bounds = new kakao.maps.LatLngBounds();
+  const cp=new kakao.maps.LatLng(cc.lat,cc.lng);
+  clientMarker=new kakao.maps.Marker({position:cp,map:map,image:new kakao.maps.MarkerImage('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png',new kakao.maps.Size(24,35)),zIndex:10});
+  clientOverlay=new kakao.maps.CustomOverlay({position:cp,content:'<div class="marker-label client"><i class="fa-solid fa-user" style="margin-right:4px"></i>내담자</div>',yAnchor:2.2,map:map});
+  const bounds=new kakao.maps.LatLngBounds();
   bounds.extend(cp);
 
-  top5.forEach((v, i) => {
-    const pos = new kakao.maps.LatLng(v.lat, v.lng);
+  topN.forEach((v,i)=>{
+    const color=getFieldColor(v.직역);
+    const pos=new kakao.maps.LatLng(v.lat,v.lng);
     bounds.extend(pos);
-    const m = new kakao.maps.Marker({ position: pos, map: map, zIndex: 5 });
+    const m=new kakao.maps.Marker({position:pos,map:map,zIndex:5});
     markers.push(m);
-    const dl = v.distance < 1 ? (v.distance * 1000).toFixed(0) + 'm' : v.distance.toFixed(1) + 'km';
-    const o = new kakao.maps.CustomOverlay({ position: pos, content: `<div class="marker-label">${i + 1}위 ${escapeHtml(v.이름)} (${dl})</div>`, yAnchor: 2.2, map: map });
+    const dl=v.distance<1?(v.distance*1000).toFixed(0)+'m':v.distance.toFixed(1)+'km';
+    const o=new kakao.maps.CustomOverlay({
+      position:pos,
+      content:`<div class="marker-label" style="background:${color.bg}"><span style="margin-right:3px">${i+1}</span>${escapeHtml(v.이름)} (${dl})</div><style>.marker-label[style*="${color.bg}"]::after{border-top:5px solid ${color.bg}}</style>`,
+      yAnchor:2.2,map:map
+    });
     overlays.push(o);
-    kakao.maps.event.addListener(m, 'click', () => showDetail(v, i + 1));
+    kakao.maps.event.addListener(m,'click',()=>showDetail(v,i+1));
   });
-  map.setBounds(bounds, 80);
+  map.setBounds(bounds,80);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePopup();});
 </script>
 </body>
 </html>
